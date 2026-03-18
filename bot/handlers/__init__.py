@@ -1,11 +1,5 @@
 """
 Регистрация всех обработчиков.
-
-Этот модуль отвечает за подключение всех роутеров к диспетчеру.
-Для добавления нового обработчика:
-1. Создайте файл с роутером в этой директории
-2. Импортируйте роутер ниже
-3. Добавьте его в функцию setup_routers()
 """
 
 from aiogram import Dispatcher
@@ -15,20 +9,15 @@ from .notes import router as notes_router
 from .reminders import router as reminders_router
 from .templates import router as templates_router
 from .admin import router as admin_router
-from .example_handler import router as example_router
 
 
 def setup_routers(dp: Dispatcher):
     """
     Регистрация всех роутеров в диспетчере.
     
-    Порядок регистрации важен! Роутеры проверяются в порядке добавления.
-    Более специфичные роутеры должны быть добавлены раньше общих.
-    
-    Args:
-        dp: Экземпляр Dispatcher
+    Порядок важен! Роутеры с фильтрами должны быть первыми.
     """
-    # Административные функции (проверяются первыми)
+    # Административные функции (с фильтром IsAdmin) - ПЕРВЫМ
     dp.include_router(admin_router)
     
     # Основные функции
@@ -36,8 +25,5 @@ def setup_routers(dp: Dispatcher):
     dp.include_router(reminders_router)
     dp.include_router(templates_router)
     
-    # Пример пользовательского обработчика
-    dp.include_router(example_router)
-    
-    # Базовые обработчики (start, help, меню) - в конце
+    # Базовые обработчики - ПОСЛЕДНИМ (catch-all)
     dp.include_router(base_router)

@@ -2,7 +2,7 @@
 Репозиторий для работы с пользователями.
 """
 
-from typing import Optional
+from typing import Optional, List
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -49,6 +49,7 @@ class UserRepository(BaseRepository):
         full_name: Optional[str] = None,
         timezone: str = "UTC",
         is_admin: bool = False,
+        **kwargs
     ) -> int:
         """Создание пользователя."""
         cursor = await self.db.execute(
@@ -60,13 +61,35 @@ class UserRepository(BaseRepository):
         )
         return cursor.lastrowid
     
-    async def get_by_id(self, user_id: int) -> Optional[User]:
+    async def get_by_id(self, record_id: int) -> Optional[User]:
         """Получение пользователя по ID."""
         row = await self.db.fetch_one(
             "SELECT * FROM users WHERE id = ?",
-            (user_id,)
+            (record_id,)
         )
         return self._row_to_user(row)
+    
+    async def update(self, record_id: int, **kwargs) -> bool:
+        """Обновление данных пользователя."""
+        if not kwargs:
+            return False
+        
+        set_clause = ", ".join(f"{k} = ?" for k in kwargs.keys())
+        values = list(kwargs.values()) + [record_id]
+        
+        await self.db.execute(
+            f"UPDATE users SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            tuple(values)
+        )
+        return True
+    
+    async def delete(self, record_id: int) -> bool:
+        """Удаление пользователя."""
+        await self.db.execute(
+            "DELETE FROM users WHERE id = ?",
+            (record_id,)
+        )
+        return True
     
     async def get_by_telegram_id(self, telegram_id: int) -> Optional[User]:
         """Получение пользователя по Telegram ID."""
@@ -100,32 +123,6 @@ class UserRepository(BaseRepository):
         )
         return await self.get_by_id(user_id)
     
-    async def update(
-        self,
-        user_id: int,
-        **kwargs
-    ) -> bool:
-        """Обновление данных пользователя."""
-        if not kwargs:
-            return False
-        
-        set_clause = ", ".join(f"{k} = ?" for k in kwargs.keys())
-        values = list(kwargs.values()) + [user_id]
-        
-        await self.db.execute(
-            f"UPDATE users SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            tuple(values)
-        )
-        return True
-    
-    async def delete(self, user_id: int) -> bool:
-        """Удаление пользователя."""
-        await self.db.execute(
-            "DELETE FROM users WHERE id = ?",
-            (user_id,)
-        )
-        return True
-    
     async def set_admin(self, user_id: int, is_admin: bool) -> bool:
         """Установка прав администратора."""
         return await self.update(user_id, is_admin=int(is_admin))
@@ -134,12 +131,12 @@ class UserRepository(BaseRepository):
         """Установка часового пояса."""
         return await self.update(user_id, timezone=timezone)
     
-    async def get_all_users(self) -> list[User]:
+    async def get_all_users(self) -> List[User]:
         """Получение списка всех пользователей."""
         rows = await self.db.fetch_all("SELECT * FROM users ORDER BY created_at DESC")
         return [self._row_to_user(row) for row in rows]
     
-    async def get_admins(self) -> list[User]:
+    async def get_admins(self) -> List[User]:
         """Получение списка администраторов."""
         rows = await self.db.fetch_all(
             "SELECT * FROM users WHERE is_admin = 1"

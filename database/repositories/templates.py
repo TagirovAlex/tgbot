@@ -2,7 +2,7 @@
 Репозиторий для работы с шаблонами.
 """
 
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -38,8 +38,9 @@ class Template:
         content = self.content_template or ""
         
         for key, value in variables.items():
-            title = title.replace(f"{{{{{key}}}}}", str(value))
-            content = content.replace(f"{{{{{key}}}}}", str(value))
+            placeholder = "{{" + key + "}}"
+            title = title.replace(placeholder, str(value))
+            content = content.replace(placeholder, str(value))
         
         return title, content
 
@@ -71,6 +72,7 @@ class TemplateRepository(BaseRepository):
         template_type: TemplateType,
         title_template: Optional[str] = None,
         content_template: Optional[str] = None,
+        **kwargs
     ) -> int:
         """Создание шаблона."""
         cursor = await self.db.execute(
@@ -82,20 +84,42 @@ class TemplateRepository(BaseRepository):
         )
         return cursor.lastrowid
     
-    async def get_by_id(self, template_id: int) -> Optional[Template]:
+    async def get_by_id(self, record_id: int) -> Optional[Template]:
         """Получение шаблона по ID."""
         row = await self.db.fetch_one(
             "SELECT * FROM templates WHERE id = ?",
-            (template_id,)
+            (record_id,)
         )
         return self._row_to_template(row)
+    
+    async def update(self, record_id: int, **kwargs) -> bool:
+        """Обновление шаблона."""
+        if not kwargs:
+            return False
+        
+        set_clause = ", ".join(f"{k} = ?" for k in kwargs.keys())
+        values = list(kwargs.values()) + [record_id]
+        
+        await self.db.execute(
+            f"UPDATE templates SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            tuple(values)
+        )
+        return True
+    
+    async def delete(self, record_id: int) -> bool:
+        """Удаление шаблона."""
+        await self.db.execute(
+            "DELETE FROM templates WHERE id = ?",
+            (record_id,)
+        )
+        return True
     
     async def get_user_templates(
         self,
         user_id: int,
         template_type: Optional[TemplateType] = None,
         limit: int = 50
-    ) -> list[Template]:
+    ) -> List[Template]:
         """Получение шаблонов пользователя."""
         if template_type:
             rows = await self.db.fetch_all(
@@ -118,29 +142,3 @@ class TemplateRepository(BaseRepository):
                 (user_id, limit)
             )
         return [self._row_to_template(row) for row in rows]
-    
-    async def update(
-        self,
-        template_id: int,
-        **kwargs
-    ) -> bool:
-        """Обновление шаблона."""
-        if not kwargs:
-            return False
-        
-        set_clause = ", ".join(f"{k} = ?" for k in kwargs.keys())
-        values = list(kwargs.values()) + [template_id]
-        
-        await self.db.execute(
-            f"UPDATE templates SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            tuple(values)
-        )
-        return True
-    
-    async def delete(self, template_id: int) -> bool:
-        """Удаление шаблона."""
-        await self.db.execute(
-            "DELETE FROM templates WHERE id = ?",
-            (template_id,)
-        )
-        return True

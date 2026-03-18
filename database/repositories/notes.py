@@ -2,7 +2,7 @@
 Репозиторий для работы с заметками.
 """
 
-from typing import Optional
+from typing import Optional, List
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -43,6 +43,7 @@ class NoteRepository(BaseRepository):
         user_id: int,
         title: str,
         content: Optional[str] = None,
+        **kwargs
     ) -> int:
         """Создание заметки."""
         cursor = await self.db.execute(
@@ -54,20 +55,42 @@ class NoteRepository(BaseRepository):
         )
         return cursor.lastrowid
     
-    async def get_by_id(self, note_id: int) -> Optional[Note]:
+    async def get_by_id(self, record_id: int) -> Optional[Note]:
         """Получение заметки по ID."""
         row = await self.db.fetch_one(
             "SELECT * FROM notes WHERE id = ?",
-            (note_id,)
+            (record_id,)
         )
         return self._row_to_note(row)
+    
+    async def update(self, record_id: int, **kwargs) -> bool:
+        """Обновление заметки."""
+        if not kwargs:
+            return False
+        
+        set_clause = ", ".join(f"{k} = ?" for k in kwargs.keys())
+        values = list(kwargs.values()) + [record_id]
+        
+        await self.db.execute(
+            f"UPDATE notes SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            tuple(values)
+        )
+        return True
+    
+    async def delete(self, record_id: int) -> bool:
+        """Удаление заметки."""
+        await self.db.execute(
+            "DELETE FROM notes WHERE id = ?",
+            (record_id,)
+        )
+        return True
     
     async def get_user_notes(
         self,
         user_id: int,
         limit: int = 50,
         offset: int = 0
-    ) -> list[Note]:
+    ) -> List[Note]:
         """Получение заметок пользователя."""
         rows = await self.db.fetch_all(
             """
@@ -80,38 +103,12 @@ class NoteRepository(BaseRepository):
         )
         return [self._row_to_note(row) for row in rows]
     
-    async def update(
-        self,
-        note_id: int,
-        **kwargs
-    ) -> bool:
-        """Обновление заметки."""
-        if not kwargs:
-            return False
-        
-        set_clause = ", ".join(f"{k} = ?" for k in kwargs.keys())
-        values = list(kwargs.values()) + [note_id]
-        
-        await self.db.execute(
-            f"UPDATE notes SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            tuple(values)
-        )
-        return True
-    
-    async def delete(self, note_id: int) -> bool:
-        """Удаление заметки."""
-        await self.db.execute(
-            "DELETE FROM notes WHERE id = ?",
-            (note_id,)
-        )
-        return True
-    
     async def search(
         self,
         user_id: int,
         query: str,
         limit: int = 20
-    ) -> list[Note]:
+    ) -> List[Note]:
         """Поиск заметок по тексту."""
         rows = await self.db.fetch_all(
             """

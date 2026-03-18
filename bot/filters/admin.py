@@ -3,10 +3,9 @@
 """
 
 from aiogram.filters import BaseFilter
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, TelegramObject
 
 import config
-from database.repositories.users import User
 
 
 class IsAdminFilter(BaseFilter):
@@ -19,40 +18,81 @@ class IsAdminFilter(BaseFilter):
     
     async def __call__(
         self,
-        event: Message | CallbackQuery,
-        user: User = None
+        event: TelegramObject,
+        user=None,
+        **kwargs
     ) -> bool:
-        tg_user = event.from_user
+        # Получаем telegram user
+        tg_user = None
+        if isinstance(event, Message):
+            tg_user = event.from_user
+        elif isinstance(event, CallbackQuery):
+            tg_user = event.from_user
+        
+        if not tg_user:
+            return False
         
         # Проверяем конфиг
         if tg_user.id in config.ADMIN_IDS:
             return True
         
         # Проверяем БД
-        if user and user.is_admin:
+        if user and hasattr(user, 'is_admin') and user.is_admin:
             return True
         
         return False
 
 
 class IsOwnerFilter(BaseFilter):
-    """Фильтр для проверки владельца ресурса."""
+    """
+    Фильтр для проверки владельца ресурса.
     
-    def __init__(self, owner_field: str = "user_id"):
+    Проверяет, что ресурс принадлежит текущему пользователю.
+    Администраторы имеют доступ ко всем ресурсам.
+    
+    Args:
+        owner_field: Название поля с ID владельца (по умолчанию 'user_id')
+        allow_admin: Разрешить доступ администраторам (по умолчанию True)
+    
+    Example:
+        @router.callback_query(F.data.startswith("note_edit:"), IsOwnerFilter())
+        async def edit_note(callback: CallbackQuery, user: User):
+            ...
+    """
+    
+    def __init__(self, owner_field: str = "user_id", allow_admin: bool = True):
         self.owner_field = owner_field
+        self.allow_admin = allow_admin
     
     async def __call__(
         self,
-        event: Message | CallbackQuery,
-        user: User = None,
+        event: TelegramObject,
+        user=None,
+        resource=None,
         **kwargs
     ) -> bool:
         if not user:
             return False
         
-        # Проверяем что ресурс принадлежит пользователю
-        resource = kwargs.get("resource")
-        if resource and hasattr(resource, self.owner_field):
-            return getattr(resource, self.owner_field) == user.id
+        # Администраторы имеют доступ ко всему
+        if self.allow_admin:
+            if hasattr(user, 'is_admin') and user.is_admin:
+                return True
+            
+            # Проверяем конфиг
+            tg_user = None
+            if isinstance(event, Message):
+                tg_user = event.from_user
+            elif isinstance(event, CallbackQuery):
+                tg_user = event.from_user
+            
+            if tg_user and tg_user.id in config.ADMIN_IDS:
+                return True
         
+        # Проверяем владельца ресурса
+        if resource and hasattr(resource, self.owner_field):
+            owner_id = getattr(resource, self.owner_field)
+            return owner_id == user.id
+        
+        # Если ресурс не передан, пропускаем (проверка будет в обработчике)
         return True

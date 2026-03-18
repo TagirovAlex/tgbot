@@ -21,7 +21,7 @@ class ReminderStates(StatesGroup):
     waiting_for_datetime = State()
     waiting_for_repeat_interval = State()
     waiting_for_edit_title = State()
-    waiting_for_edit_content = State()
+    waiting_for_edit_content = State()  # <-- Добавлено
     waiting_for_edit_datetime = State()
     waiting_for_template_select = State()
 

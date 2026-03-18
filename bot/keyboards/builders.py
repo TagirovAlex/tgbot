@@ -77,6 +77,9 @@ def get_reminders_menu_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="⏰ Из шаблона", callback_data="reminder_from_template")
     )
     builder.row(
+        InlineKeyboardButton(text="👥 В группу", callback_data="reminder_create_group")
+    )
+    builder.row(
         InlineKeyboardButton(text="« Назад", callback_data="main_menu")
     )
     
@@ -225,6 +228,7 @@ def get_skip_keyboard(callback_data: str = "skip") -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="❌ Отмена", callback_data="cancel")
     )
     return builder.as_markup()
+
 
 
 def get_pagination_keyboard(

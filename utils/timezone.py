@@ -3,7 +3,7 @@
 """
 
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Union
 import pytz
 
 import config
@@ -48,8 +48,47 @@ def get_user_timezone(timezone_str: str) -> pytz.timezone:
         return pytz.UTC
 
 
+def ensure_datetime(value: Union[str, datetime, None]) -> Optional[datetime]:
+    """
+    Преобразование значения в datetime.
+    
+    SQLite возвращает datetime как строку, эта функция
+    конвертирует строку обратно в datetime.
+    
+    Args:
+        value: Строка, datetime или None
+        
+    Returns:
+        datetime объект или None
+    """
+    if value is None:
+        return None
+    
+    if isinstance(value, datetime):
+        return value
+    
+    if isinstance(value, str):
+        # Пробуем разные форматы SQLite
+        formats = [
+            "%Y-%m-%d %H:%M:%S.%f",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%d",
+        ]
+        for fmt in formats:
+            try:
+                return datetime.strptime(value, fmt)
+            except ValueError:
+                continue
+        
+        # Если ничего не подошло, возвращаем None
+        return None
+    
+    return None
+
+
 def user_time_to_utc(
-    local_time: datetime,
+    local_time: Union[str, datetime],
     user_timezone: str
 ) -> datetime:
     """
@@ -62,6 +101,11 @@ def user_time_to_utc(
     Returns:
         Время в UTC
     """
+    # Преобразуем в datetime если это строка
+    local_time = ensure_datetime(local_time)
+    if local_time is None:
+        return datetime.utcnow()
+    
     tz = get_user_timezone(user_timezone)
     
     # Если время "наивное" (без timezone info), локализуем его
@@ -72,7 +116,7 @@ def user_time_to_utc(
 
 
 def utc_to_user_time(
-    utc_time: datetime,
+    utc_time: Union[str, datetime],
     user_timezone: str
 ) -> datetime:
     """
@@ -85,6 +129,11 @@ def utc_to_user_time(
     Returns:
         Время в часовом поясе пользователя
     """
+    # Преобразуем в datetime если это строка
+    utc_time = ensure_datetime(utc_time)
+    if utc_time is None:
+        return datetime.now()
+    
     tz = get_user_timezone(user_timezone)
     
     # Добавляем UTC timezone info если его нет
@@ -95,7 +144,7 @@ def utc_to_user_time(
 
 
 def format_user_time(
-    utc_time: datetime,
+    utc_time: Union[str, datetime, None],
     user_timezone: str,
     format_str: str = "%d.%m.%Y %H:%M"
 ) -> str:
@@ -103,13 +152,19 @@ def format_user_time(
     Форматирование времени для отображения пользователю.
     
     Args:
-        utc_time: Время в UTC
+        utc_time: Время в UTC (строка или datetime)
         user_timezone: Часовой пояс пользователя
         format_str: Формат вывода
         
     Returns:
         Отформатированная строка времени
     """
+    # Преобразуем в datetime если это строка
+    utc_time = ensure_datetime(utc_time)
+    
+    if utc_time is None:
+        return "—"
+    
     local_time = utc_to_user_time(utc_time, user_timezone)
     return local_time.strftime(format_str)
 
@@ -156,3 +211,20 @@ def get_timezone_offset(timezone_str: str) -> str:
     now = datetime.now(tz)
     offset = now.strftime('%z')
     return f"{offset[:3]}:{offset[3:]}"
+
+
+def format_datetime_short(
+    dt: Union[str, datetime, None],
+    user_timezone: str = "UTC"
+) -> str:
+    """
+    Короткое форматирование даты/времени.
+    
+    Args:
+        dt: datetime или строка
+        user_timezone: Часовой пояс пользователя
+        
+    Returns:
+        Отформатированная строка
+    """
+    return format_user_time(dt, user_timezone, "%d.%m %H:%M")

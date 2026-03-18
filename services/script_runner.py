@@ -4,9 +4,10 @@
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 
 import config
 from .base import BaseService
@@ -32,11 +33,17 @@ class ScriptRunnerService(BaseService):
     и запускать их на выполнение.
     """
     
+    # Разрешённые расширения файлов
+    ALLOWED_EXTENSIONS = {'.sh', '.bash', '.py', ''}
+    
     def __init__(self, db, scripts_dir: Path = None):
         super().__init__(db)
         self.scripts_dir = scripts_dir or config.SCRIPTS_DIR
+        
+        # Создаём директорию если не существует
+        self.scripts_dir.mkdir(parents=True, exist_ok=True)
     
-    async def get_available_scripts(self) -> list[str]:
+    async def get_available_scripts(self) -> List[str]:
         """
         Получение списка доступных скриптов.
         
@@ -46,13 +53,17 @@ class ScriptRunnerService(BaseService):
         scripts = []
         
         if not self.scripts_dir.exists():
+            logger.warning(f"Директория скриптов не существует: {self.scripts_dir}")
             return scripts
         
-        for file in self.scripts_dir.iterdir():
-            if file.is_file() and not file.name.startswith('.'):
-                # Проверяем расширение
-                if file.suffix in ('.sh', '.py', '.bash', ''):
-                    scripts.append(file.name)
+        try:
+            for file in self.scripts_dir.iterdir():
+                if file.is_file() and not file.name.startswith('.'):
+                    # Проверяем расширение
+                    if file.suffix.lower() in self.ALLOWED_EXTENSIONS:
+                        scripts.append(file.name)
+        except Exception as e:
+            logger.error(f"Ошибка чтения директории скриптов: {e}")
         
         return sorted(scripts)
     
@@ -73,30 +84,38 @@ class ScriptRunnerService(BaseService):
             
         Raises:
             FileNotFoundError: Если скрипт не найден
-            asyncio.TimeoutError: Если превышен таймаут
         """
         script_path = self.scripts_dir / script_name
         
         if not script_path.exists():
             raise FileNotFoundError(f"Скрипт не найден: {script_name}")
         
+        if not script_path.is_file():
+            raise FileNotFoundError(f"Не является файлом: {script_name}")
+        
         # Определяем команду для запуска
-        if script_path.suffix == '.py':
-            cmd = ['python', str(script_path)]
-        elif script_path.suffix in ('.sh', '.bash'):
+        suffix = script_path.suffix.lower()
+        
+        if suffix == '.py':
+            cmd = ['python3', str(script_path)]
+        elif suffix in ('.sh', '.bash'):
             cmd = ['bash', str(script_path)]
         else:
-            # Пробуем запустить напрямую
-            cmd = [str(script_path)]
+            # Пробуем запустить напрямую (если есть права на выполнение)
+            if os.access(script_path, os.X_OK):
+                cmd = [str(script_path)]
+            else:
+                # Пробуем через bash
+                cmd = ['bash', str(script_path)]
         
-        logger.info(f"Запуск скрипта: {script_name}")
+        logger.info(f"Запуск скрипта: {script_name}, команда: {' '.join(cmd)}")
         
         try:
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=self.scripts_dir
+                cwd=str(self.scripts_dir)
             )
             
             stdout, stderr = await asyncio.wait_for(
@@ -125,5 +144,14 @@ class ScriptRunnerService(BaseService):
                 return_code=-1,
                 stdout="",
                 stderr=f"Превышен таймаут выполнения ({timeout} сек)",
+                success=False
+            )
+        except Exception as e:
+            logger.error(f"Ошибка выполнения скрипта {script_name}: {e}")
+            return ScriptResult(
+                script_name=script_name,
+                return_code=-1,
+                stdout="",
+                stderr=str(e),
                 success=False
             )

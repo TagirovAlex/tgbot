@@ -8,6 +8,8 @@ from .timezone import (
     utc_to_user_time,
     format_user_time,
     parse_user_datetime,
+    ensure_datetime,
+    format_datetime_short,
     POPULAR_TIMEZONES,
 )
 from .helpers import (
@@ -23,6 +25,8 @@ __all__ = [
     "utc_to_user_time", 
     "format_user_time",
     "parse_user_datetime",
+    "ensure_datetime",
+    "format_datetime_short",
     "POPULAR_TIMEZONES",
     "truncate_text",
     "escape_html",
