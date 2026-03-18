@@ -59,7 +59,7 @@
 
 Клонируйте репозиторий:
 
-    git clone https://github.com/yourusername/telegram-assistant-bot.git
+    git clone https://github.com/TagirovAlex/telegram-assistant-bot.git
     cd telegram-assistant-bot
 
 Создайте виртуальное окружение:
