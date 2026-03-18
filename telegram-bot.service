@@ -1,0 +1,33 @@
+[Unit]
+Description=Telegram Assistant Bot
+After=network.target
+
+[Service]
+Type=simple
+# Замените на реального пользователя!
+User=tgbot
+Group=tgbot
+
+# Рабочая директория
+WorkingDirectory=/home/tgbot
+
+# Путь к Python в виртуальном окружении
+ExecStart=/home/tgbot/venv/bin/python /home/tgbot/main.py
+
+# Перезапуск при ошибке
+Restart=on-failure
+RestartSec=10
+
+# Корректное завершение
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Переменные окружения (если нужно)
+# Environment=BOT_TOKEN=your_token_here
+
+# Или загрузка из файла .env
+EnvironmentFile=/home/tgbot/.env
+
+[Install]
+WantedBy=multi-user.target
