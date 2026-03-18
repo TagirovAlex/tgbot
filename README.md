@@ -2,6 +2,9 @@
 README.md
 
 # 🤖 Telegram Bot
+![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
+![Aiogram](https://img.shields.io/badge/Aiogram-3.4+-green.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 Многофункциональный Telegram-бот для управления заметками, напоминаниями и выполнения административных задач.
 
