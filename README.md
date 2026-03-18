@@ -1,9 +1,7 @@
 # tgbot
 README.md
 
-Markdown
-
-# Telegram Assistant Bot
+# 🤖 Telegram Bot
 
 Многофункциональный Telegram-бот для управления заметками, напоминаниями и выполнения административных задач.
 
