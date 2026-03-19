@@ -22,6 +22,9 @@ def get_main_menu_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🌍 Часовой пояс", callback_data="timezone_menu")
     )
     builder.row(
+        InlineKeyboardButton(text="🤖 AI Ассистент", callback_data="ai_menu")
+    )
+    builder.row(
         InlineKeyboardButton(text="ℹ️ Помощь", callback_data="help")
     )
     

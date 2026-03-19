@@ -5,6 +5,7 @@
 from aiogram.fsm.state import State, StatesGroup
 
 
+
 class NoteStates(StatesGroup):
     """Состояния для работы с заметками."""
     waiting_for_title = State()
@@ -44,3 +45,13 @@ class AdminStates(StatesGroup):
     waiting_for_user_id = State()
     waiting_for_script_select = State()
     confirm_restart = State()
+    
+# ... существующие классы ...
+
+class AIStates(StatesGroup):
+class AIStates(StatesGroup):
+    """Состояния для AI чата."""
+    chatting = State()
+    waiting_for_prompt = State()
+    selecting_model = State()  # Для админа - ввод названия модели
+    selecting_mode = State()

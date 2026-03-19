@@ -108,7 +108,19 @@ class Database:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
-            
+            -- Настройки бота
+            CREATE TABLE IF NOT EXISTS bot_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        
+            -- Настройки бота
+            CREATE TABLE IF NOT EXISTS bot_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
             -- Индексы
             CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
             CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
@@ -117,6 +129,7 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_reminders_active ON reminders(is_active);
             CREATE INDEX IF NOT EXISTS idx_templates_user_id ON templates(user_id);
             CREATE INDEX IF NOT EXISTS idx_action_logs_user_id ON action_logs(user_id);
+            
         """)
         await self.connection.commit()
     
